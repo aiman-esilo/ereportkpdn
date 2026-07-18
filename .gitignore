@@ -8,3 +8,7 @@ ui-debug.log
 .env.*
 service-account*.json
 *-firebase-adminsdk-*.json
+.agents/
+.claude/
+agent/
+skills-lock.json
