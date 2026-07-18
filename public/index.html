@@ -514,6 +514,7 @@
     // Kata laluan TIDAK disimpan di dalam fail ini; ia diurus oleh Firebase Authentication.
     const ADMIN_LOGIN = Object.freeze({
         id: "SUPERADMIN",
+        uid: "oPP3vwxE2sWKYg7Rt4e7pLz7pkH2",
         email: "aiman@kpdn.gov.my",
         nama: "SUPER ADMIN KPDN",
         jawatan: "PENTADBIR SISTEM",
@@ -743,8 +744,8 @@
         try {
             if (auth.currentUser) await auth.signOut();
             const credential = await auth.signInWithEmailAndPassword(ADMIN_LOGIN.email, password);
-            const emailSah = (credential.user.email || '').toLowerCase() === ADMIN_LOGIN.email.toLowerCase();
-            if (!emailSah) throw new Error("Akaun pentadbir tidak sepadan.");
+            const uidSah = credential.user.uid === ADMIN_LOGIN.uid;
+            if (!uidSah) throw new Error("Akaun pentadbir tidak sepadan.");
 
             currentUser = {
                 id: ADMIN_LOGIN.id,
@@ -1332,8 +1333,8 @@ SESALINAN KENYATAAN PEMERIKSAAN DAN AKUAN PENYITAAN YANG TELAH SIAP DITANDATANGA
     async function hantarDataAdminKePelayan(kategori, dataArray) {
         setLoader(true, "Mengemas kini Pangkalan Data...");
         try {
-            const emailAktif = (auth.currentUser && auth.currentUser.email || '').toLowerCase();
-            const adminDisahkan = currentUser && currentUser.isAdmin && emailAktif === ADMIN_LOGIN.email.toLowerCase();
+            const uidAktif = auth.currentUser && auth.currentUser.uid;
+            const adminDisahkan = currentUser && currentUser.isAdmin && uidAktif === ADMIN_LOGIN.uid;
             if (!adminDisahkan) throw new Error("Sesi pentadbir tidak sah. Sila log masuk semula.");
             let path, value;
             if (kategori === 'pegawai') {
