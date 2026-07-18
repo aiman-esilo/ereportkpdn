@@ -1,0 +1,30 @@
+name: Deploy e-Report KPDN ke Firebase Hosting
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firebase-hosting-live
+  cancel-in-progress: true
+
+jobs:
+  deploy_live:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ambil kod repository
+        uses: actions/checkout@v4
+
+      - name: Deploy ke ereportkpdn.web.app
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_SISTEM_E_REPORT_KPDN }}
+          channelId: live
+          projectId: sistem-e-report-kpdn
+          target: ereport
+          entryPoint: .

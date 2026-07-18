@@ -1,0 +1,31 @@
+name: Preview e-Report KPDN
+
+on:
+  pull_request:
+
+permissions:
+  checks: write
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: firebase-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ambil kod repository
+        uses: actions/checkout@v4
+
+      - name: Jana pautan preview Firebase
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_SISTEM_E_REPORT_KPDN }}
+          projectId: sistem-e-report-kpdn
+          target: ereport
+          entryPoint: .
+          expires: 7d

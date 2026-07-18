@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sistem e-Report KPDN</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Tetapan Scrollbar */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: #f8fafc; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .input-upper { text-transform: uppercase; }
+        
+        /* Hilangkan butang naik turun (spinners) pada input nombor */
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        /* Spinner Animasi */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Buang outline default mobile */
+        input, select, textarea, button { outline: none; -webkit-tap-highlight-color: transparent; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- LOADING OVERLAY GLOBAL -->
+    <div id="globalLoader" class="fixed inset-0 bg-slate-900 bg-opacity-80 z-[100] flex flex-col items-center justify-center text-white hidden">
+        <div class="loader mb-4"></div>
+        <p id="loaderText" class="font-bold tracking-widest uppercase text-center px-4">Sedang Menghubungi Pelayan...</p>
+    </div>
+
+    <!-- CUSTOM MODAL (Pengganti Alert/Confirm) -->
+    <div id="customModal" class="fixed inset-0 bg-slate-900 bg-opacity-75 z-[150] flex items-center justify-center hidden px-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center transform transition-all">
+            <h3 id="modalTitle" class="text-xl font-bold text-slate-800 mb-2 uppercase">Tajuk</h3>
+            <p id="modalMessage" class="text-slate-600 text-sm mb-6 uppercase leading-relaxed">Mesej di sini</p>
+            <div class="flex flex-col sm:flex-row justify-center gap-3 w-full" id="modalButtons"></div>
+        </div>
+    </div>
+
+    <!-- HEADER / MENU ATAS -->
+    <header class="bg-slate-800 text-white shadow-md hidden sticky top-0 z-40" id="mainHeader">
+        <div class="w-full max-w-7xl mx-auto">
+            <div class="flex flex-col md:flex-row items-center justify-between p-3 md:px-6 md:h-16 space-y-3 md:space-y-0">
+                <div class="flex items-center space-x-3 w-full md:w-auto justify-center md:justify-start">
+                    <!-- LOGO KEMENTERIAN DI HEADER -->
+                    <img src="https://lh3.googleusercontent.com/d/1Yr2HiITPClyCEfDr75QZrnu1ElWX3SR4" 
+                         onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Jata_Malaysia.svg/300px-Jata_Malaysia.svg.png'" 
+                         alt="Logo KPDN" class="h-10 md:h-12 object-contain bg-white rounded-full p-1 shadow-sm">
+                    
+                    <div class="text-center md:text-left flex-1">
+                        <h1 class="text-sm md:text-lg font-bold uppercase tracking-wide leading-tight">SISTEM E-REPORT KPDN</h1>
+                        <p id="userNameDisplay" class="text-[10px] md:text-xs text-blue-300 uppercase truncate">Log masuk sebagai: </p>
+                    </div>
+                </div>
+                
+                <!-- Navigasi -->
+                <nav class="flex w-full md:w-auto overflow-x-auto gap-2 pb-1 md:pb-0 justify-center">
+                    <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn flex-shrink-0 px-4 py-2 rounded-lg bg-blue-600 text-xs sm:text-sm font-bold transition">Borang</button>
+                    <button onclick="switchTab('sejarah')" id="nav-sejarah" class="nav-btn flex-shrink-0 px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs sm:text-sm font-bold transition">Sejarah</button>
+                    <button onclick="switchTab('admin')" id="nav-admin" class="nav-btn hidden flex-shrink-0 px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-yellow-400 text-xs sm:text-sm font-bold transition">Admin</button>
+                    <button onclick="logout()" class="flex-shrink-0 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs sm:text-sm font-bold transition">Keluar</button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- LOGIN OVERLAY -->
+    <div id="loginOverlay" class="fixed inset-0 bg-slate-100 sm:bg-slate-900 z-50 flex items-center justify-center p-4">
+        <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xl sm:shadow-2xl w-full max-w-md flex flex-col justify-center relative overflow-hidden">
+            
+            <!-- LOGO & NAMA KEMENTERIAN DI LOGIN -->
+            <img src="https://lh3.googleusercontent.com/d/1Yr2HiITPClyCEfDr75QZrnu1ElWX3SR4" 
+                 onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Jata_Malaysia.svg/300px-Jata_Malaysia.svg.png'" 
+                 alt="Logo KPDN" class="h-24 sm:h-32 mx-auto mb-3 object-contain drop-shadow-md">
+            
+            <p class="text-slate-600 text-[10px] sm:text-xs font-extrabold mb-6 uppercase leading-relaxed text-center tracking-wide">Kementerian Perdagangan Dalam Negeri<br>Dan Kos Sara Hidup</p>
+                 
+            <h2 class="text-xl sm:text-2xl font-black text-slate-800 uppercase tracking-widest text-center mb-8 bg-slate-100 py-2 rounded-lg border border-slate-200">SISTEM E-REPORT KPDN</h2>
+            
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-xs font-extrabold text-slate-700 mb-2 uppercase">No Kad Pengenalan (Tanpa '-')</label>
+                    <input type="text" inputmode="numeric" maxlength="12" id="loginIc" oninput="this.value=this.value.replace(/\D/g,'').slice(0,12)" class="w-full px-4 py-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-blue-600 outline-none disabled:bg-slate-100 font-black tracking-[0.2em] text-center text-lg transition-colors" placeholder="CTH: 850101145566">
+                </div>
+                <button id="btnLogin" onclick="handleLogin()" class="w-full bg-blue-700 hover:bg-blue-800 active:bg-blue-900 text-white font-bold py-4 px-4 rounded-xl shadow-lg transition-all text-sm uppercase tracking-widest">
+                    Log Masuk
+                </button>
+                
+                <div class="mt-6 pt-6 border-t-2 border-slate-100">
+                    <button id="btnBalaiAkses" onclick="bukaModBalaiAwam()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-4 px-4 rounded-xl shadow-lg transition-colors text-xs uppercase flex items-center justify-center space-x-2 tracking-widest">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                        <span>Akses Balai Polis</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div id="loginStatus" class="absolute top-0 left-0 w-full bg-yellow-400 text-yellow-900 text-xs font-bold py-2 uppercase tracking-widest text-center hidden">Sedang Memuat Turun Data...</div>
+        </div>
+    </div>
+
+    <!-- MAIN APP CONTAINER -->
+    <main id="appContainer" class="hidden flex-1 w-full max-w-7xl mx-auto p-3 sm:p-6 pb-20">
+        
+        <!-- TOAST NOTIFICATION -->
+        <div id="toast" class="fixed bottom-4 left-4 right-4 sm:top-4 sm:bottom-auto sm:left-auto sm:right-4 transform translate-y-[150%] sm:translate-y-0 sm:translate-x-[150%] opacity-0 pointer-events-none transition-all duration-500 z-50">
+            <div class="bg-emerald-600 text-white px-5 py-4 sm:py-3 rounded-xl shadow-2xl flex items-center space-x-3 border border-emerald-500">
+                <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                <span id="toastMsg" class="font-bold text-sm tracking-wide uppercase">Berjaya!</span>
+            </div>
+        </div>
+
+        <!-- MODUL 1: DASHBOARD (BORANG LAPORAN) -->
+        <div id="dashboard" class="tab-content active space-y-4 sm:space-y-6">
+            
+            <!-- HEADER TAJUK MOBILE -->
+            <div class="bg-transparent pb-2 sm:pb-0">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-2 sm:border-b sm:border-slate-200 sm:pb-4 space-y-4 sm:space-y-0">
+                    <div>
+                        <h2 class="text-2xl sm:text-3xl font-black text-slate-800 uppercase tracking-tight">Borang Laporan</h2>
+                        <p class="text-slate-500 text-xs sm:text-sm font-bold uppercase mt-1">Sila lengkapkan semua maklumat wajib.</p>
+                    </div>
+                    <!-- BUTTON TUKAR MOD -->
+                    <div class="flex bg-slate-200 rounded-xl p-1.5 w-full sm:w-auto shadow-inner">
+                        <button onclick="mintaTukarMod('cots')" id="btnCots" class="mode-btn px-4 py-3 sm:px-6 sm:py-2.5 rounded-lg text-xs sm:text-sm font-black shadow bg-white text-blue-700 transition-all uppercase flex-1 sm:flex-none">COTS</button>
+                        <button onclick="mintaTukarMod('sitaan')" id="btnSitaan" class="mode-btn px-4 py-3 sm:px-6 sm:py-2.5 rounded-lg text-xs sm:text-sm font-black text-slate-500 hover:text-slate-700 hover:bg-slate-300 transition-all uppercase flex-1 sm:flex-none">KES SITAAN</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KOTAK 1: PEMOHON -->
+            <div class="bg-white p-5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-sm border border-slate-200">
+                <h3 class="text-sm sm:text-lg font-black text-blue-800 border-b-2 border-slate-50 pb-3 mb-4 uppercase flex items-center"><span class="bg-blue-100 text-blue-800 w-6 h-6 rounded-full flex items-center justify-center mr-2 text-[10px] sm:text-xs">1</span> Maklumat Pemohon</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] sm:text-xs font-bold text-slate-500 uppercase mb-1.5">Nama Pegawai</label>
+                        <input type="text" id="pemohonNama" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs sm:text-sm font-bold text-slate-800 input-upper" readonly>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] sm:text-xs font-bold text-slate-500 uppercase mb-1.5">No Kad Pengenalan</label>
+                        <input type="text" id="pemohonIc" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs sm:text-sm font-bold text-slate-800 input-upper" readonly>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] sm:text-xs font-bold text-slate-500 uppercase mb-1.5">Jawatan</label>
+                        <input type="text" id="pemohonJawatan" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs sm:text-sm font-bold text-slate-800 input-upper" readonly>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] sm:text-xs font-bold text-slate-500 uppercase mb-1.5">Tempat Bertugas</label>
+                        <input type="text" id="pemohonTempat" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs sm:text-sm font-bold text-slate-800 input-upper" readonly>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KOTAK 2: SIASATAN -->
+            <div class="bg-white p-5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-sm border border-slate-200">
+                <h3 class="text-sm sm:text-lg font-black text-blue-800 border-b-2 border-slate-50 pb-3 mb-4 uppercase flex items-center"><span class="bg-blue-100 text-blue-800 w-6 h-6 rounded-full flex items-center justify-center mr-2 text-[10px] sm:text-xs">2</span> Maklumat Kertas Siasatan</h3>
+                <div class="grid grid-cols-2 gap-3 sm:gap-4 mb-5">
+                    <div>
+                        <label class="block text-[10px] sm:text-xs font-bold text-slate-700 mb-1.5 uppercase">Tarikh Kes <span class="text-red-500">*</span></label>
+                        <input type="date" id="tarikhKes" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 sm:px-4 py-3 text-xs sm:text-sm uppercase focus:bg-white focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 outline-none transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] sm:text-xs font-bold text-slate-700 mb-1.5 uppercase">Masa Kes <span class="text-red-500">*</span></label>
+                        <input type="time" id="masaKes" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 sm:px-4 py-3 text-xs sm:text-sm uppercase focus:bg-white focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 outline-none transition-colors">
+                    </div>
+                </div>
+                
+                <div class="mb-5">
+                    <label class="block text-[10px] sm:text-xs font-bold text-slate-700 mb-2 uppercase">Format No Kertas Siasatan <span class="text-red-500">*</span></label>
+                    <div class="flex flex-wrap items-center bg-slate-50 p-2 sm:p-3 rounded-xl border border-slate-200 gap-2">
+                        <select id="ksAkta" class="border border-slate-300 bg-white rounded-lg px-2 py-3 text-xs sm:text-sm font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 text-center uppercase flex-1 min-w-[70px] outline-none"></select>
+                        <span class="font-bold text-slate-400 hidden sm:inline">-</span>
+                        <input type="number" id="ksTahun" oninput="this.value = this.value.toUpperCase()" placeholder="TAHUN" class="border border-slate-300 bg-white rounded-lg px-2 py-3 text-xs sm:text-sm font-bold text-center focus:ring-2 focus:ring-blue-500 w-full sm:w-20 outline-none">
+                        <span class="font-bold text-slate-400 hidden sm:inline">-</span>
+                        <input type="number" id="ksSiri" oninput="this.value = this.value.toUpperCase()" placeholder="SIRI" class="border border-slate-300 bg-white rounded-lg px-2 py-3 text-xs sm:text-sm font-bold text-center focus:ring-2 focus:ring-blue-500 flex-1 min-w-[70px] outline-none">
+                        <span class="font-bold text-slate-400 hidden sm:inline">-</span>
+                        <select id="ksKawasan" class="border border-slate-300 bg-white rounded-lg px-2 py-3 text-xs sm:text-sm font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 text-center uppercase w-full sm:w-28 outline-none"></select>
+                    </div>
+                </div>
+                
+                <div class="space-y-4 pt-4 border-t-2 border-slate-50">
+                    <div>
+                        <label class="block text-[10px] sm:text-xs font-bold text-slate-700 mb-1.5 uppercase">Akta Utama <span class="text-red-500">*</span></label>
+                        <select id="aktaKesalahan" onchange="resetCarianKesalahan()" class="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-xs sm:text-sm font-bold text-slate-800 uppercase focus:ring-2 focus:ring-blue-500 outline-none transition-colors"></select>
+                    </div>
+
+                    <!-- CAIRAN JENIS KESALAHAN -->
+                    <div class="relative">
+                        <label class="block text-[10px] sm:text-xs font-bold text-slate-700 mb-1.5 uppercase">Carian Jenis Kesalahan <span class="text-red-500">*</span></label>
+                        <input type="text" id="carianJenisInput" oninput="this.value = this.value.toUpperCase(); cariKesalahan();" placeholder="TAIP KATA KUNCI KESALAHAN (CTH: LESEN, HARGA)..." class="w-full bg-white border border-blue-300 rounded-xl px-4 py-3 text-xs sm:text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-colors">
+                        <ul id="carianJenisHasil" class="bg-white border border-slate-200 rounded-xl shadow-2xl max-h-48 overflow-y-auto hidden absolute z-[60] w-full mt-2 divide-y divide-slate-100"></ul>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] sm:text-xs font-bold text-slate-700 mb-1.5 uppercase">Jenis / Butiran Kesalahan (Auto)</label>
+                        <textarea id="jenisKesalahan" rows="3" readonly class="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-3 text-xs sm:text-sm font-bold text-slate-600 leading-relaxed outline-none transition-colors" style="resize: none; overflow: hidden; word-wrap: break-word; min-height: 80px;" placeholder="SILA BUAT CARIAN DI ATAS..."></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] sm:text-xs font-bold text-slate-700 mb-1.5 uppercase">Seksyen Kesalahan (Auto)</label>
+                        <input type="text" id="seksyenKesalahan" readonly class="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-3 text-xs sm:text-sm font-bold text-slate-600 outline-none transition-colors" placeholder="AUTO ISI">
+                    </div>
+                </div>
+            </div>
+
+            <!-- KOTAK 3: PASUKAN -->
+            <div class="bg-white p-5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-sm border border-slate-200">
+                <h3 class="text-sm sm:text-lg font-black text-blue-800 border-b-2 border-slate-50 pb-3 mb-4 uppercase flex items-center"><span class="bg-blue-100 text-blue-800 w-6 h-6 rounded-full flex items-center justify-center mr-2 text-[10px] sm:text-xs">3</span> Kategori Pasukan</h3>
+                <div class="space-y-4 mb-5">
+                    <div class="relative">
+                        <label class="block text-[10px] sm:text-xs font-bold text-slate-700 mb-1.5 uppercase">Carian Nama Pegawai</label>
+                        <input type="text" id="carianNamaInput" oninput="this.value = this.value.toUpperCase(); cariPegawai();" placeholder="TAIP NAMA ATAU IC..." class="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-xs sm:text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-colors">
+                        <ul id="carianHasil" class="bg-white border border-slate-200 rounded-xl shadow-2xl max-h-48 overflow-y-auto hidden absolute z-[60] w-full mt-2 divide-y divide-slate-100"></ul>
+                    </div>
+                    <div id="ruangTugasan">
+                        <label class="block text-[10px] sm:text-xs font-bold text-slate-700 mb-1.5 uppercase">Tugasan (Opsional)</label>
+                        <select id="pilihanTugasan" class="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-xs sm:text-sm font-bold text-slate-800 uppercase focus:ring-2 focus:ring-blue-500 outline-none transition-colors"></select>
+                    </div>
+                    <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 pt-2">
+                        <button onclick="tambahPasukan()" class="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-6 py-3.5 rounded-xl text-xs sm:text-sm font-bold shadow-md uppercase w-full sm:flex-1 tracking-wider transition-all">Tambah Anggota</button>
+                        <button onclick="resetCarianPegawai()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-6 py-3.5 rounded-xl text-xs sm:text-sm font-bold uppercase w-full sm:flex-1 tracking-wider transition-all">Padam Carian</button>
+                    </div>
+                </div>
+                
+                <div class="border border-slate-200 rounded-xl overflow-x-auto shadow-sm">
+                    <table class="w-full text-left min-w-[400px]">
+                        <thead class="text-[10px] sm:text-xs text-slate-500 uppercase bg-slate-100 border-b border-slate-200 font-extrabold">
+                            <tr>
+                                <th class="px-4 py-3">Nama & Jawatan</th>
+                                <th id="thTugasan" class="px-4 py-3 w-1/3">Tugasan</th>
+                                <th class="px-4 py-3 text-right w-20"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="senaraiPasukanTable" class="divide-y divide-slate-100 bg-white">
+                            <tr><td colspan="3" class="px-4 py-5 text-center text-[10px] sm:text-xs text-red-500 italic font-bold">SILA MASUKKAN SEKURANG-KURANGNYA 1 ANGGOTA PASUKAN.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- KOTAK 4: PIHAK DILAPORKAN -->
+            <div class="bg-white p-5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-sm border border-slate-200">
+                <h3 class="text-sm sm:text-lg font-black text-blue-800 border-b-2 border-slate-50 pb-3 mb-4 uppercase flex items-center"><span class="bg-blue-100 text-blue-800 w-6 h-6 rounded-full flex items-center justify-center mr-2 text-[10px] sm:text-xs">4</span> Pihak Dilaporkan</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+                    <div>
+                        <label class="block text-[10px] sm:text-xs font-bold text-slate-700 mb-1.5 uppercase">Nama Syarikat / Premis <span class="text-red-500">*</span></label>
+                        <input type="text" id="premisNama" oninput="this.value = this.value.toUpperCase()" class="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-xs sm:text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] sm:text-xs font-bold text-slate-700 mb-1.5 uppercase">No Pendaftaran (SSM)</label>
+                        <input type="text" id="premisSsm" oninput="this.value = this.value.toUpperCase()" class="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-xs sm:text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-colors">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-[10px] sm:text-xs font-bold text-slate-700 mb-1.5 uppercase">Alamat Premis <span class="text-red-500">*</span></label>
+                        <textarea id="premisAlamat" rows="2" oninput="this.value = this.value.toUpperCase(); autoResize(this);" style="min-height:60px;" class="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-xs sm:text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-colors"></textarea>
+                    </div>
+                </div>
+                
+                <div class="p-4 sm:p-5 bg-slate-100 border border-slate-200 rounded-2xl space-y-4">
+                    <h4 id="labelOkkOkt" class="text-xs sm:text-sm font-black text-slate-800 uppercase border-b border-slate-200 pb-2">Maklumat Orang Kena Kompaun (OKK)</h4>
+                    <div>
+                        <label class="block text-[10px] sm:text-xs font-bold text-slate-600 mb-1.5 uppercase">Nama Penuh Individu <span class="text-red-500">*</span></label>
+                        <input type="text" id="okkNama" oninput="this.value = this.value.toUpperCase()" class="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-xs sm:text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-colors">
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[10px] sm:text-xs font-bold text-slate-600 mb-1.5 uppercase">No. Kad Pengenalan <span class="text-red-500">*</span></label>
+                            <input type="number" id="okkIc" oninput="this.value = this.value.toUpperCase()" class="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-xs sm:text-sm font-bold focus:ring-2 focus:ring-blue-500 tracking-wider outline-none transition-colors">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] sm:text-xs font-bold text-slate-600 mb-1.5 uppercase">Jawatan <span class="text-red-500">*</span></label>
+                            <input type="text" id="okkJawatan" oninput="this.value = this.value.toUpperCase()" placeholder="CTH: PEMILIK" class="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-xs sm:text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-colors">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KOTAK KOMPAUN (COTS SAHAJA) -->
+            <div id="kotakKompaun" class="bg-emerald-50 p-5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-sm border border-emerald-200 border-l-[6px] border-l-emerald-500">
+                <h3 class="text-sm sm:text-lg font-black text-emerald-800 border-b-2 border-emerald-100 pb-3 mb-4 uppercase">Butiran Kompaun (COTS)</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-[10px] sm:text-xs font-bold text-emerald-800 mb-1.5 uppercase">Nilai Kompaun (RM) <span class="text-red-500">*</span></label>
+                        <input type="number" id="kompaunNilai" class="w-full bg-white border border-emerald-300 rounded-xl px-4 py-3 text-xs sm:text-sm font-black text-emerald-700 focus:ring-2 focus:ring-emerald-500 outline-none transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] sm:text-xs font-bold text-emerald-800 mb-1.5 uppercase">No Resit <span class="text-red-500">*</span></label>
+                        <input type="text" id="kompaunResit" oninput="this.value = this.value.toUpperCase()" class="w-full bg-white border border-emerald-300 rounded-xl px-4 py-3 text-xs sm:text-sm font-bold focus:ring-2 focus:ring-emerald-500 outline-none transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] sm:text-xs font-bold text-emerald-800 mb-1.5 uppercase">Jenis Bayaran <span class="text-red-500">*</span></label>
+                        <select id="kompaunBayar" class="w-full bg-white border border-emerald-300 rounded-xl px-4 py-3 text-xs sm:text-sm font-bold text-emerald-900 uppercase focus:ring-2 focus:ring-emerald-500 outline-none transition-colors">
+                            <option value="TUNAI">TUNAI</option>
+                            <option value="EZPAYMENT">EZPAYMENT</option>
+                            <option value="TAWARAN 14 HARI">TAWARAN 14 HARI</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KOTAK SITAAN -->
+            <div class="bg-white p-5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-sm border border-slate-200">
+                <h3 class="text-sm sm:text-lg font-black text-blue-800 border-b-2 border-slate-50 pb-3 mb-4 uppercase">Maklumat Sitaan</h3>
+                <p class="text-[10px] sm:text-xs text-slate-600 mb-3 font-bold uppercase bg-blue-50 p-3 rounded-lg border border-blue-100 leading-relaxed">Format: Jenis Barang, Kuantiti, Nilai RM <br><span class="font-normal opacity-80">(Cth: GULA KASAR, 50 KG, 142.50)</span></p>
+                
+                <div class="flex flex-col space-y-3 mb-5">
+                    <textarea id="tampalSitaan" rows="3" oninput="this.value = this.value.toUpperCase(); autoResize(this);" class="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-xs sm:text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-colors" placeholder="TAIP ATAU TAMPAL DI SINI..." style="min-height:80px;"></textarea>
+                    <button onclick="prosesSitaan()" class="self-end bg-slate-800 hover:bg-slate-900 text-white px-6 py-3.5 rounded-xl text-xs sm:text-sm font-bold uppercase w-full sm:w-auto tracking-widest shadow-md transition-all">Masuk Ke Jadual ⬇</button>
+                </div>
+                
+                <div class="border border-slate-200 rounded-xl overflow-x-auto shadow-sm">
+                    <table class="w-full text-left min-w-[400px]">
+                        <thead class="text-[10px] sm:text-xs text-slate-500 uppercase bg-slate-100 border-b border-slate-200 font-extrabold">
+                            <tr>
+                                <th class="px-4 py-3">Jenis Sitaan</th>
+                                <th class="px-4 py-3">Kuantiti</th>
+                                <th class="px-4 py-3">Nilai (RM)</th>
+                                <th class="px-4 py-3 w-16"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="jadualSitaanBody" class="divide-y divide-slate-100 bg-white">
+                            <tr><td colspan="4" class="px-4 py-5 text-center text-[10px] sm:text-xs text-slate-400 italic font-bold">SENARAI SITAAN KOSONG.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- JANA BUTTON -->
+            <div class="bg-white p-6 sm:p-10 rounded-2xl sm:rounded-3xl shadow-lg border border-blue-200 flex flex-col items-center text-center mt-6 relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-blue-700"></div>
+                <button onclick="semakDanJanaLaporan()" class="w-full sm:w-auto px-8 py-5 bg-blue-700 hover:bg-blue-800 active:bg-blue-900 text-white text-sm sm:text-lg font-black rounded-2xl shadow-xl transition-all uppercase tracking-widest mb-5">
+                    JANA & SIMPAN LAPORAN
+                </button>
+                
+                <div id="paparanKodJana" class="hidden w-full sm:w-auto px-8 py-4 bg-emerald-50 border-2 border-emerald-400 rounded-2xl text-center shadow-sm mb-4 transition-all">
+                    <span class="block text-[10px] sm:text-xs font-extrabold text-emerald-700 uppercase tracking-widest mb-1">KOD AKSES BALAI</span>
+                    <span id="kodUnikTeks" class="block text-3xl sm:text-4xl font-black text-emerald-900 tracking-[0.2em]"></span>
+                </div>
+                
+                <p class="text-[10px] sm:text-xs text-slate-400 font-bold uppercase max-w-sm">Data akan direkod terus ke Firebase Realtime Database.</p>
+            </div>
+            
+            <!-- PRATONTON -->
+            <div id="pratontonKotak" class="hidden bg-white p-5 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border-4 border-slate-200 relative overflow-hidden mt-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 border-b-2 border-slate-100 pb-4 space-y-4 sm:space-y-0">
+                    <h3 class="font-black text-slate-800 text-base sm:text-xl uppercase flex items-center space-x-2">
+                        <span class="bg-blue-100 text-blue-700 p-2 rounded-lg">📄</span>
+                        <span>Pratonton Laporan</span>
+                    </h3>
+                    <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                        <button onclick="hantarLaporanKeEmel()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-black px-6 py-3.5 rounded-xl shadow-md text-xs sm:text-sm uppercase tracking-wider transition-colors">
+                            ✉️ HANTAR KE E-MEL SAYA
+                        </button>
+                        <button onclick="editSemula()" class="w-full sm:w-auto bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-black px-6 py-3.5 rounded-xl shadow-md text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center space-x-2 transition-colors">
+                            <span>✏️ TERSILAP? EDIT SEMULA</span>
+                        </button>
+                    </div>
+                </div>
+                <pre id="pratontonTeks" class="whitespace-pre-wrap font-sans text-[10px] sm:text-sm leading-relaxed text-slate-800 bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-200 font-semibold break-words"></pre>
+            </div>
+        </div>
+
+        <!-- MODUL 1.5: SEJARAH LAPORAN -->
+        <div id="sejarah" class="tab-content max-w-4xl mx-auto space-y-6">
+            <div class="bg-white p-6 sm:p-8 rounded-2xl sm:rounded-3xl shadow-sm border border-slate-200">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:border-b border-slate-100 sm:pb-4 space-y-4 sm:space-y-0">
+                    <div>
+                        <h2 class="text-xl sm:text-2xl font-black text-slate-800 uppercase tracking-tight">Sejarah Laporan Saya</h2>
+                        <p class="text-slate-500 text-xs sm:text-sm font-bold uppercase mt-1">Rekod laporan yang telah dijana oleh anda.</p>
+                    </div>
+                    <button onclick="muatSejarah()" class="w-full sm:w-auto bg-blue-100 hover:bg-blue-200 text-blue-800 px-5 py-3 rounded-xl text-xs sm:text-sm font-black transition-colors uppercase tracking-wider">
+                        🔄 Refresh Data
+                    </button>
+                </div>
+                
+                <div class="border border-slate-200 rounded-xl overflow-x-auto shadow-sm">
+                    <table class="w-full text-left min-w-[500px]">
+                        <thead class="text-[10px] sm:text-xs text-slate-500 uppercase bg-slate-100 border-b border-slate-200 font-extrabold">
+                            <tr>
+                                <th class="px-4 py-3">Tarikh Dijana</th>
+                                <th class="px-4 py-3">Mod</th>
+                                <th class="px-4 py-3">Premis / Maklumat</th>
+                                <th class="px-4 py-3 text-center">Kod Balai</th>
+                            </tr>
+                        </thead>
+                        <tbody id="jadualSejarahBody" class="divide-y divide-slate-100 bg-white">
+                            <tr><td colspan="4" class="px-4 py-8 text-center text-[10px] sm:text-xs text-slate-400 italic font-bold">SILA TEKAN BUTANG REFRESH UNTUK MEMUAT TURUN DATA.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODUL 2: BALAI POLIS -->
+        <div id="balai" class="tab-content">
+            <div class="bg-white p-6 sm:p-10 rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 max-w-3xl mx-auto text-center relative overflow-hidden my-4 sm:my-10">
+                
+                <!-- LOGO & NAMA KEMENTERIAN DI BALAI -->
+                <img src="https://lh3.googleusercontent.com/d/1Yr2HiITPClyCEfDr75QZrnu1ElWX3SR4" 
+                     onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Jata_Malaysia.svg/300px-Jata_Malaysia.svg.png'" 
+                     alt="Jata Negara" class="h-20 sm:h-24 mx-auto mb-3 object-contain">
+                
+                <p class="text-slate-600 text-[10px] sm:text-xs font-extrabold mb-6 uppercase leading-relaxed text-center tracking-wide">Kementerian Perdagangan Dalam Negeri<br>Dan Kos Sara Hidup</p>
+                     
+                <h3 class="text-xl sm:text-2xl font-black text-slate-800 mb-2 uppercase tracking-widest bg-slate-100 py-2 rounded-lg border border-slate-200 w-full sm:max-w-md mx-auto">SISTEM E-REPORT KPDN</h3>
+                
+                <p class="text-slate-500 text-xs sm:text-sm font-bold mt-8 mb-4 uppercase">Masukkan Kod 5 Angka yang dijana oleh sistem.</p>
+                
+                <div class="flex flex-col sm:flex-row justify-center items-center gap-3 mb-8 w-full max-w-xs mx-auto sm:max-w-none">
+                    <input type="number" pattern="[0-9]*" id="carianKodBalai" oninput="this.value = this.value.toUpperCase()" class="w-full sm:w-64 bg-slate-50 border-2 border-slate-200 rounded-2xl px-4 py-4 text-3xl sm:text-4xl font-black tracking-[0.3em] text-center focus:bg-white focus:border-blue-600 outline-none text-slate-800 transition-colors" placeholder="12345">
+                    <div class="flex w-full sm:w-auto gap-2">
+                        <button onclick="cariLaporanBalai()" class="flex-1 sm:flex-none bg-blue-700 hover:bg-blue-800 text-white font-black py-4.5 px-8 rounded-2xl shadow-lg uppercase text-sm sm:text-base tracking-wider transition-all">Cari</button>
+                        <button onclick="resetBalai()" class="flex-1 sm:flex-none bg-slate-200 hover:bg-slate-300 text-slate-700 font-black py-4.5 px-6 rounded-2xl uppercase text-sm sm:text-base tracking-wider transition-all">Reset</button>
+                    </div>
+                </div>
+
+                <div id="paparanLaporanBalai" class="hidden text-left bg-white rounded-2xl border-2 border-slate-200 shadow-xl overflow-hidden mt-4">
+                    <div class="bg-slate-800 p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <h4 class="font-bold text-white uppercase text-xs sm:text-sm flex items-center space-x-2 tracking-wider">
+                            <span class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
+                            <span>Dokumen Rasmi</span>
+                        </h4>
+                        <button onclick="salinLaporanBalai()" class="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3.5 rounded-xl text-xs sm:text-sm font-black shadow-lg uppercase tracking-wider flex items-center justify-center space-x-2 transition-all">
+                            <span>SALIN SEMUA TEKS</span>
+                        </button>
+                    </div>
+                    <div class="p-5 sm:p-8 bg-slate-50">
+                        <pre id="teksLaporanBalai" class="whitespace-pre-wrap font-sans text-[10px] sm:text-sm leading-relaxed text-slate-800 break-words font-bold"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODUL 3: ADMIN -->
+        <div id="admin" class="tab-content max-w-4xl mx-auto space-y-6 mt-4">
+            <div class="bg-slate-800 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-2xl text-white mb-6">
+                <h2 class="text-xl sm:text-3xl font-black uppercase tracking-wide">Pusat Admin (Live)</h2>
+                <p class="text-slate-400 text-[10px] sm:text-xs mt-2 font-bold uppercase tracking-wider">Penyegerakan Firebase Realtime Database Secara Terus</p>
+            </div>
+            <div id="adminCardsContainer" class="space-y-4 sm:space-y-6"></div>
+        </div>
+    </main>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-functions-compat.js"></script>
+<script>
+    // PENTING: Gantikan nilai databaseURL dengan URL tepat daripada Firebase Console.
+    const firebaseConfig = {
+      apiKey: "AIzaSyBvEYqjWTiMXOOdEE9PwpjL5BcDfEbngmk",
+      authDomain: "sistem-e-report-kpdn.firebaseapp.com",
+      databaseURL: "https://sistem-e-report-kpdn-default-rtdb.asia-southeast1.firebasedatabase.app/",
+      projectId: "sistem-e-report-kpdn",
+      storageBucket: "sistem-e-report-kpdn.firebasestorage.app",
+      messagingSenderId: "501283137894",
+      appId: "1:501283137894:web:1b7f41804ed8e6c0fdc0a7"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const rtdb = firebase.database();
+    const auth = firebase.auth();
+    const functions = firebase.app().functions("asia-southeast1");
+
+    let DB = { users: {}, pegawai: [], tugasan: [], ksAkta: [], kodKawasan: [], kesalahan: [] };
+    
+    let currentUser = null;
+    let currentMode = 'cots'; 
+    let pasukanSenarai = [];
+    let sitaanSenarai = [];
+    let pegawaiDipilih = null;
+    let kesalahanDipilih = null;
+    let editModeKod = null;
+
+    // --- STREAMING_CHUNK: Skrip Bantuan Antaramuka (Modal, Toast, Loader) ---
+    function setLoader(state, text = "Sedang Memproses...") {
+        let loader = document.getElementById('globalLoader');
+        document.getElementById('loaderText').innerText = text;
+        if(state) loader.classList.remove('hidden');
+        else loader.classList.add('hidden');
+    }
+
+    function showModal(title, msg) {
+        document.getElementById('modalTitle').innerText = title;
+        document.getElementById('modalMessage').innerText = msg;
+        document.getElementById('modalButtons').innerHTML = `<button onclick="closeModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-black py-4 px-8 rounded-xl uppercase shadow-md w-full tracking-widest text-sm">OK, FAHAM</button>`;
+        document.getElementById('customModal').classList.remove('hidden');
+    }
+
+    function showConfirm(title, msg, onConfirm) {
+        document.getElementById('modalTitle').innerText = title;
+        document.getElementById('modalMessage').innerText = msg;
+        
+        let btnYa = document.createElement('button');
+        btnYa.className = "bg-red-600 hover:bg-red-700 text-white font-black py-4 px-4 rounded-xl uppercase flex-1 shadow-md text-xs sm:text-sm tracking-wider";
+        btnYa.innerText = "YA, TERUSKAN";
+        btnYa.onclick = function() { closeModal(); onConfirm(); };
+        
+        let btnBatal = document.createElement('button');
+        btnBatal.className = "bg-slate-200 hover:bg-slate-300 text-slate-700 font-black py-4 px-4 rounded-xl uppercase flex-1 text-xs sm:text-sm tracking-wider";
+        btnBatal.innerText = "BATAL";
+        btnBatal.onclick = function() { closeModal(); };
+
+        let btnDiv = document.getElementById('modalButtons');
+        btnDiv.innerHTML = '';
+        btnDiv.appendChild(btnYa);
+        btnDiv.appendChild(btnBatal);
+        
+        document.getElementById('customModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+        document.getElementById('customModal').classList.add('hidden');
+    }
+
+    function showToast(msg) {
+        let toast = document.getElementById('toast');
+        document.getElementById('toastMsg').innerText = msg;
+        
+        // Paparkan indikator status (mengatasi CSS Tailwind default)
+        toast.style.opacity = '1';
+        toast.style.transform = 'translate(0, 0)';
+        
+        setTimeout(() => { 
+            // Sembunyikan sepenuhnya (tolak 150% ke bawah atau tepi)
+            toast.style.opacity = '0';
+            toast.style.transform = window.innerWidth < 640 ? 'translateY(150%)' : 'translateX(150%)';
+        }, 3000);
+    }
+
+    // --- AUTO RESIZE KOTAK ---
+    function autoResize(el) {
+        el.style.height = '80px';
+        if (el.scrollHeight > 80) {
+            el.style.height = (el.scrollHeight + 2) + 'px';
+        }
+    }
+
+    // --- STREAMING_CHUNK: Logik Persediaan & Tarikan Data Permulaan ---
+    function toArray(value) {
+        if (!value) return [];
+        return Array.isArray(value) ? value.filter(v => v !== null) : Object.values(value);
+    }
+
+    async function initApp() {
+        document.getElementById('btnLogin').disabled = true;
+        document.getElementById('loginStatus').classList.remove('hidden');
+        try {
+            if (!firebaseConfig.databaseURL.startsWith("https://")) {
+                throw new Error("Sila masukkan databaseURL Realtime Database dalam firebaseConfig.");
+            }
+            if (!auth.currentUser) await auth.signInAnonymously();
+            const [pegawaiSnap, tetapanSnap, kesalahanSnap] = await Promise.all([
+                rtdb.ref('pegawai').once('value'), rtdb.ref('tetapan').once('value'), rtdb.ref('kesalahan').once('value')
+            ]);
+            const tetapan = tetapanSnap.val() || {};
+            DB.users = pegawaiSnap.val() || {};
+            DB.pegawai = Object.keys(DB.users).map(ic => ({ ic, ...DB.users[ic] }));
+            DB.tugasan = toArray(tetapan.tugasan);
+            DB.ksAkta = toArray(tetapan.ksAkta);
+            DB.kodKawasan = toArray(tetapan.kodKawasan);
+            DB.kesalahan = toArray(kesalahanSnap.val());
+            setupDropdowns();
+            renderAdminData();
+        } catch (err) {
+            console.error("Firebase Error:", err);
+            showModal("Ralat Firebase", err.message || "Gagal memuat turun data Realtime Database.");
+        } finally {
+            document.getElementById('btnLogin').disabled = false;
+            document.getElementById('loginStatus').classList.add('hidden');
+        }
+    }
+
+    function setupDropdowns() {
+        let selAkta = document.getElementById('aktaKesalahan');
+        let unqAkta = [...new Set(DB.kesalahan.map(k => k.akta))];
+        selAkta.innerHTML = '<option value="">-- PILIH AKTA --</option>' + unqAkta.map(a => `<option value="${a.toUpperCase()}">${a.toUpperCase()}</option>`).join('');
+        
+        document.getElementById('pilihanTugasan').innerHTML = '<option value="">-- TIADA TUGASAN --</option>' + DB.tugasan.map(t => `<option value="${t.toUpperCase()}">${t.toUpperCase()}</option>`).join('');
+        document.getElementById('ksAkta').innerHTML = DB.ksAkta.map(a => `<option value="${a.toUpperCase()}">${a.toUpperCase()}</option>`).join('');
+        document.getElementById('ksKawasan').innerHTML = DB.kodKawasan.map(k => `<option value="${k.toUpperCase()}">${k.toUpperCase()}</option>`).join('');
+    }
+
+    // --- STREAMING_CHUNK: Logik Daftar Masuk dan Keluar ---
+    function handleLogin() {
+        let ic = document.getElementById('loginIc').value.trim().toUpperCase();
+        if(!/^\d{12}$/.test(ic)) return showModal("Ralat", "Sila masukkan 12 digit No Kad Pengenalan.");
+        
+        if(DB.users[ic]) {
+            currentUser = DB.users[ic];
+            currentUser.ic = ic;
+            
+            let currNama = currentUser.namaPenuh || currentUser.nama || "PEGAWAI";
+            let currJaw = currentUser.namaJawatanPenuh || currentUser.jawatanSingkatan || currentUser.jawatan || "JAWATAN";
+            let currTempat = currentUser.tempatBertugas || currentUser.tempat || "LOKASI";
+
+            document.getElementById('userNameDisplay').innerText = "Log masuk: " + currNama;
+            document.getElementById('pemohonNama').value = currNama;
+            document.getElementById('pemohonIc').value = ic;
+            document.getElementById('pemohonJawatan').value = currJaw;
+            document.getElementById('pemohonTempat').value = currTempat;
+
+            if(currentUser.isAdmin) document.getElementById('nav-admin').classList.remove('hidden');
+            else document.getElementById('nav-admin').classList.add('hidden');
+
+            document.getElementById('loginOverlay').classList.add('hidden');
+            document.getElementById('mainHeader').classList.remove('hidden');
+            document.getElementById('appContainer').classList.remove('hidden');
+            
+            laksanaTukarMod('cots'); // Ini mereset borang
+            switchTab('dashboard');
+            showToast("Log Masuk Berjaya!");
+            window.scrollTo(0,0);
+        } else {
+            showModal("Ralat Akses", "No Kad Pengenalan tiada dalam pangkalan data. Sila semak dengan Admin.");
+        }
+    }
+
+    function logout() {
+        currentUser = null;
+        document.getElementById('loginIc').value = '';
+        document.getElementById('mainHeader').classList.add('hidden');
+        document.getElementById('appContainer').classList.add('hidden');
+        document.getElementById('loginOverlay').classList.remove('hidden');
+        laksanaTukarMod('cots'); // Reset
+    }
+
+    function bukaModBalaiAwam() {
+        document.getElementById('loginOverlay').classList.add('hidden');
+        document.getElementById('appContainer').classList.remove('hidden');
+        document.getElementById('mainHeader').classList.add('hidden');
+        resetBalai();
+        switchTab('balai');
+        window.scrollTo(0,0);
+    }
+
+    // --- STREAMING_CHUNK: Pengurusan Mod Borang Utama ---
+    function mintaTukarMod(mode) {
+        if (pasukanSenarai.length > 0 || sitaanSenarai.length > 0 || document.getElementById('premisNama').value || document.getElementById('tarikhKes').value) {
+            showConfirm("Reset Borang?", "Menukar mod akan MENGOSONGKAN borang dan maklumat semasa. Teruskan?", function() {
+                laksanaTukarMod(mode);
+            });
+            return;
+        }
+        laksanaTukarMod(mode);
+    }
+
+    function laksanaTukarMod(mode) {
+        currentMode = mode;
+        let cots = document.getElementById('btnCots');
+        let sit = document.getElementById('btnSitaan');
+        let btnKomp = document.getElementById('kotakKompaun');
+        let labelOkk = document.getElementById('labelOkkOkt');
+
+        let actClass = "mode-btn px-4 py-3 sm:px-6 sm:py-2.5 rounded-lg text-xs sm:text-sm font-black shadow bg-white text-blue-700 transition-all uppercase flex-1 sm:flex-none";
+        let inactClass = "mode-btn px-4 py-3 sm:px-6 sm:py-2.5 rounded-lg text-xs sm:text-sm font-black text-slate-500 hover:bg-slate-200 transition-all uppercase flex-1 sm:flex-none";
+
+        if(mode === 'cots') {
+            cots.className = actClass;
+            sit.className = inactClass;
+            btnKomp.classList.remove('hidden');
+            labelOkk.innerText = "Maklumat Orang Kena Kompaun (OKK)";
+        } else {
+            sit.className = actClass;
+            cots.className = inactClass;
+            btnKomp.classList.add('hidden');
+            labelOkk.innerText = "Maklumat Orang Kena Tuduh (OKT)";
+        }
+        
+        // RESET KESELURUHAN MEDAN INPUT
+        document.getElementById('tarikhKes').value = '';
+        document.getElementById('masaKes').value = '';
+        document.getElementById('ksTahun').value = new Date().getFullYear();
+        document.getElementById('ksSiri').value = '';
+        document.getElementById('aktaKesalahan').value = '';
+        
+        resetCarianKesalahan();
+        
+        document.getElementById('premisNama').value = '';
+        document.getElementById('premisSsm').value = '';
+        document.getElementById('premisAlamat').value = '';
+        document.getElementById('okkNama').value = '';
+        document.getElementById('okkIc').value = '';
+        document.getElementById('okkJawatan').value = '';
+        document.getElementById('kompaunNilai').value = '';
+        document.getElementById('kompaunResit').value = '';
+        document.getElementById('pratontonKotak').classList.add('hidden');
+        document.getElementById('paparanKodJana').classList.add('hidden');
+        
+        pasukanSenarai = [];
+        sitaanSenarai = [];
+        editModeKod = null;
+        resetCarianPegawai();
+        renderPasukan();
+        renderSitaan();
+    }
+
+    // --- STREAMING_CHUNK: Pengendalian Carian Kesalahan Pintar ---
+    function resetCarianKesalahan() {
+        kesalahanDipilih = null;
+        document.getElementById('carianJenisInput').value = '';
+        document.getElementById('jenisKesalahan').value = '';
+        document.getElementById('seksyenKesalahan').value = '';
+        document.getElementById('carianJenisHasil').classList.add('hidden');
+        autoResize(document.getElementById('jenisKesalahan'));
+    }
+
+    function cariKesalahan() {
+        let akta = document.getElementById('aktaKesalahan').value;
+        if(!akta) {
+            showModal("Perhatian", "Sila pilih Akta Utama terlebih dahulu.");
+            document.getElementById('carianJenisInput').value = '';
+            return;
+        }
+
+        let val = document.getElementById('carianJenisInput').value.trim().toUpperCase();
+        let list = document.getElementById('carianJenisHasil');
+        list.innerHTML = '';
+        
+        if(val.length < 2) { list.classList.add('hidden'); return; }
+
+        let hasil = DB.kesalahan.filter(k => 
+            k.akta.toUpperCase() === akta && 
+            k.jenis.toUpperCase().includes(val)
+        );
+
+        if(hasil.length > 0) {
+            list.classList.remove('hidden');
+            hasil.forEach(k => {
+                let li = document.createElement('li');
+                li.className = "px-4 py-4 hover:bg-blue-50 cursor-pointer text-[10px] sm:text-xs border-b border-slate-100 uppercase font-bold text-slate-700 active:bg-blue-100";
+                li.innerText = k.jenis;
+                li.onmousedown = (e) => {
+                    e.preventDefault();
+                    kesalahanDipilih = k;
+                    document.getElementById('carianJenisInput').value = k.jenis;
+                    document.getElementById('jenisKesalahan').value = k.jenis;
+                    document.getElementById('seksyenKesalahan').value = k.seksyen;
+                    autoResize(document.getElementById('jenisKesalahan'));
+                    list.classList.add('hidden');
+                };
+                list.appendChild(li);
+            });
+        } else {
+            list.classList.add('hidden');
+        }
+    }
+
+    // --- STREAMING_CHUNK: Logik Carian dan Penambahan Ahli Pasukan ---
+    function cariPegawai() {
+        let val = document.getElementById('carianNamaInput').value.trim().toUpperCase();
+        let list = document.getElementById('carianHasil');
+        list.innerHTML = '';
+        
+        if(val.length < 2) { list.classList.add('hidden'); return; }
+
+        let hasil = DB.pegawai.filter(p => {
+            let n = String(p.namaPenuh || p.nama || "").toUpperCase();
+            let i = String(p.ic || "").toUpperCase();
+            return n.includes(val) || i.includes(val);
+        });
+
+        if(hasil.length > 0) {
+            list.classList.remove('hidden');
+            hasil.forEach(p => {
+                let namaPapar = p.namaPenuh || p.nama || "TIADA NAMA";
+                let jawatanPapar = p.jawatanSingkatan || p.jawatan || "TIADA JAWATAN";
+
+                let li = document.createElement('li');
+                li.className = "px-4 py-4 sm:py-3 hover:bg-blue-50 cursor-pointer text-[10px] sm:text-xs border-b border-slate-100 uppercase font-bold text-slate-700 active:bg-blue-100";
+                li.innerText = `${namaPapar} (${jawatanPapar})`;
+                li.onmousedown = (e) => {
+                    e.preventDefault();
+                    pegawaiDipilih = p;
+                    document.getElementById('carianNamaInput').value = namaPapar;
+                    list.classList.add('hidden');
+                };
+                list.appendChild(li);
+            });
+        } else {
+            list.classList.add('hidden');
+        }
+    }
+
+    function resetCarianPegawai() {
+        pegawaiDipilih = null;
+        document.getElementById('carianNamaInput').value = '';
+        document.getElementById('pilihanTugasan').value = '';
+        document.getElementById('carianHasil').classList.add('hidden');
+    }
+
+    function tambahPasukan() {
+        if(!pegawaiDipilih) { showModal("Perhatian", "Sila buat carian dan klik pada nama pegawai di dalam senarai yang muncul."); return; }
+        
+        let tugasan = document.getElementById('pilihanTugasan').value.toUpperCase();
+        if(pasukanSenarai.find(p => p.ic === pegawaiDipilih.ic)) { 
+            showModal("Perhatian", "Pegawai ini telah pun ditambahkan."); return; 
+        }
+
+        pasukanSenarai.push({
+            ic: pegawaiDipilih.ic,
+            nama: pegawaiDipilih.namaPenuh || pegawaiDipilih.nama || "-",
+            jawatan: pegawaiDipilih.jawatanSingkatan || pegawaiDipilih.jawatan || "-",
+            tugasan: (tugasan || "-")
+        });
+        
+        renderPasukan();
+        resetCarianPegawai();
+    }
+
+    function buangPasukan(ic) {
+        pasukanSenarai = pasukanSenarai.filter(p => p.ic !== ic);
+        renderPasukan();
+    }
+
+    function renderPasukan() {
+        let tbody = document.getElementById('senaraiPasukanTable');
+        tbody.innerHTML = '';
+        if(pasukanSenarai.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="px-4 py-5 text-center text-[10px] sm:text-xs text-red-500 italic font-bold">SILA MASUKKAN SEKURANG-KURANGNYA 1 ANGGOTA PASUKAN.</td></tr>';
+            return;
+        }
+        pasukanSenarai.forEach(p => {
+            let html = `<td class="px-4 py-4 font-bold text-slate-800 uppercase text-[10px] sm:text-xs">${p.jawatan} ${p.nama}</td>`;
+            html += `<td class="px-4 py-4 text-blue-700 font-black text-[10px] sm:text-xs uppercase">${p.tugasan}</td>`;
+            html += `<td class="px-4 py-4 text-right"><button onclick="buangPasukan('${p.ic}')" class="text-[10px] bg-red-100 text-red-700 px-3 py-2 rounded-lg hover:bg-red-200 active:bg-red-300 transition font-black uppercase tracking-wider">PADAM</button></td>`;
+            
+            let tr = document.createElement('tr');
+            tr.innerHTML = html;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // --- STREAMING_CHUNK: Pengendalian Rekod Barangan Sitaan ---
+    function prosesSitaan() {
+        let lines = document.getElementById('tampalSitaan').value.toUpperCase().split('\n');
+        lines.forEach(line => {
+            let col = line.split(',');
+            if(col.length >= 2) {
+                sitaanSenarai.push({
+                    jenis: col[0].trim(),
+                    kuantiti: col[1].trim(),
+                    nilai: col[2] ? col[2].trim() : ""
+                });
+            }
+        });
+        document.getElementById('tampalSitaan').value = '';
+        
+        let el = document.getElementById('tampalSitaan');
+        el.style.height = '80px';
+        
+        renderSitaan();
+    }
+
+    function buangSitaan(idx) {
+        sitaanSenarai.splice(idx, 1);
+        renderSitaan();
+    }
+
+    function renderSitaan() {
+        let tbody = document.getElementById('jadualSitaanBody');
+        tbody.innerHTML = '';
+        if(sitaanSenarai.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-5 text-center text-[10px] sm:text-xs text-slate-400 italic font-bold">SENARAI SITAAN KOSONG.</td></tr>';
+            return;
+        }
+        sitaanSenarai.forEach((s, idx) => {
+            let tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="px-4 py-4 text-slate-800 font-bold uppercase text-[10px] sm:text-xs">${s.jenis}</td>
+                <td class="px-4 py-4 text-slate-800 font-bold uppercase text-[10px] sm:text-xs">${s.kuantiti}</td>
+                <td class="px-4 py-4 font-black text-emerald-700 uppercase text-[10px] sm:text-xs">RM ${s.nilai || '0.00'}</td>
+                <td class="px-4 py-4 text-right"><button onclick="buangSitaan(${idx})" class="text-[10px] bg-red-100 text-red-700 px-3 py-2 rounded-lg hover:bg-red-200 active:bg-red-300 transition font-black uppercase tracking-wider">PADAM</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // --- STREAMING_CHUNK: Pengesahan Wajib dan Penghantaran Laporan ---
+    function semakDanJanaLaporan() {
+        // Semakan Validasi Wajib
+        if(!document.getElementById('tarikhKes').value) return showModal("Borang Tidak Lengkap", "Sila masukkan Tarikh Kes.");
+        if(!document.getElementById('masaKes').value) return showModal("Borang Tidak Lengkap", "Sila masukkan Masa Kes.");
+        if(!document.getElementById('ksSiri').value || !document.getElementById('ksTahun').value) return showModal("Borang Tidak Lengkap", "Sila lengkapkan Format No Kertas Siasatan.");
+        if(!document.getElementById('aktaKesalahan').value) return showModal("Borang Tidak Lengkap", "Sila pilih Akta Utama.");
+        if(!document.getElementById('jenisKesalahan').value || !kesalahanDipilih) return showModal("Borang Tidak Lengkap", "Sila buat carian dan pilih Jenis Kesalahan.");
+        
+        if(pasukanSenarai.length === 0) return showModal("Borang Tidak Lengkap", "Sila masukkan sekurang-kurangnya SATU anggota pasukan.");
+        
+        if(!document.getElementById('premisNama').value) return showModal("Borang Tidak Lengkap", "Sila masukkan Nama Syarikat / Premis.");
+        if(!document.getElementById('premisAlamat').value) return showModal("Borang Tidak Lengkap", "Sila masukkan Alamat Premis.");
+        if(!document.getElementById('okkNama').value) return showModal("Borang Tidak Lengkap", "Sila masukkan Nama Penuh Individu (OKK/OKT).");
+        if(!document.getElementById('okkIc').value) return showModal("Borang Tidak Lengkap", "Sila masukkan No. Kad Pengenalan Individu.");
+        if(!document.getElementById('okkJawatan').value) return showModal("Borang Tidak Lengkap", "Sila masukkan Jawatan Individu tersebut.");
+
+        if(currentMode === 'cots') {
+            if(!document.getElementById('kompaunNilai').value) return showModal("Borang Tidak Lengkap", "Sila masukkan Nilai Kompaun (COTS).");
+            if(!document.getElementById('kompaunResit').value) return showModal("Borang Tidak Lengkap", "Sila masukkan No Resit Kompaun.");
+        } else {
+            if(sitaanSenarai.length === 0) return showModal("Borang Tidak Lengkap", "Untuk Mod Kes Sitaan, senarai maklumat sitaan diwajibkan.");
+        }
+
+        // Lulus semua validasi
+        janaLaporan();
+    }
+
+    function janaLaporan() {
+        setLoader(true, "Merekodkan ke Pangkalan Data...");
+        
+        let teks = formatTeks();
+        let kod = editModeKod || Math.floor(10000 + Math.random() * 90000).toString();
+        
+        let dataBorang = {
+            mode: currentMode,
+            tarikh: document.getElementById('tarikhKes').value.toUpperCase(),
+            masa: document.getElementById('masaKes').value.toUpperCase(),
+            ksTahun: document.getElementById('ksTahun').value.toUpperCase(),
+            ksSiri: document.getElementById('ksSiri').value.toUpperCase(),
+            ksAkta: document.getElementById('ksAkta').value.toUpperCase(),
+            ksKaw: document.getElementById('ksKawasan').value.toUpperCase(),
+            akta: document.getElementById('aktaKesalahan').value.toUpperCase(),
+            sek: document.getElementById('seksyenKesalahan').value.toUpperCase(),
+            jenis: document.getElementById('jenisKesalahan').value.toUpperCase(),
+            pNama: document.getElementById('premisNama').value.toUpperCase(),
+            pSsm: document.getElementById('premisSsm').value.toUpperCase(),
+            pAlamat: document.getElementById('premisAlamat').value.toUpperCase(),
+            oNama: document.getElementById('okkNama').value.toUpperCase(),
+            oIc: document.getElementById('okkIc').value.toUpperCase(),
+            oJaw: document.getElementById('okkJawatan').value.toUpperCase(),
+            kNilai: document.getElementById('kompaunNilai').value.toUpperCase(),
+            kResit: document.getElementById('kompaunResit').value.toUpperCase(),
+            kBayar: document.getElementById('kompaunBayar').value.toUpperCase(),
+            pasukan: pasukanSenarai,
+            sitaan: sitaanSenarai
+        };
+
+        const laporanData = {
+            kodLaporan: kod,
+            icPegawai: currentUser.ic,
+            mode: currentMode.toUpperCase(),
+            teksLaporan: teks,
+            dataForm: dataBorang,
+            tarikhDijana: firebase.database.ServerValue.TIMESTAMP,
+            tarikhKemaskini: firebase.database.ServerValue.TIMESTAMP,
+            emelDihantar: false,
+            status: "DISIMPAN"
+        };
+
+        rtdb.ref('laporan/' + kod).set(laporanData)
+            .then(() => {
+                    document.getElementById('pratontonTeks').innerText = teks;
+                    document.getElementById('pratontonKotak').classList.remove('hidden');
+                    document.getElementById('paparanKodJana').classList.remove('hidden');
+                    document.getElementById('kodUnikTeks').innerText = kod;
+                    editModeKod = kod;
+                    showToast("Tersimpan di Pangkalan Data!");
+                    
+                    let y = document.getElementById('pratontonKotak').getBoundingClientRect().top + window.scrollY - 80;
+                    window.scrollTo({top: y, behavior: 'smooth'});
+            })
+            .catch(err => {
+                console.error(err);
+                showModal("Ralat Rangkaian", "Gagal menyimpan laporan. Semak sambungan internet anda.");
+            })
+            .finally(() => { setLoader(false); });
+    }
+
+    function formatTeks() {
+        let dt = {
+            tarikh: document.getElementById('tarikhKes').value,
+            masa: document.getElementById('masaKes').value.replace(':',''),
+            ksFull: `${document.getElementById('ksAkta').value}-${document.getElementById('ksTahun').value}-${document.getElementById('ksSiri').value}-${document.getElementById('ksKawasan').value}`.toUpperCase(),
+            akta: document.getElementById('aktaKesalahan').value.toUpperCase(),
+            sek: document.getElementById('seksyenKesalahan').value.toUpperCase(),
+            jenis: document.getElementById('jenisKesalahan').value.toUpperCase(),
+            pNama: document.getElementById('premisNama').value.toUpperCase(),
+            pAlamat: document.getElementById('premisAlamat').value.toUpperCase(),
+            pSsm: document.getElementById('premisSsm').value.toUpperCase(),
+            oNama: document.getElementById('okkNama').value.toUpperCase(),
+            oIc: document.getElementById('okkIc').value.toUpperCase(),
+            oJaw: document.getElementById('okkJawatan').value.toUpperCase(),
+            kNilai: document.getElementById('kompaunNilai').value.toUpperCase(),
+            kResit: document.getElementById('kompaunResit').value.toUpperCase(),
+            kBayar: document.getElementById('kompaunBayar').value.toUpperCase()
+        };
+
+        let tStr = dt.tarikh ? new Date(dt.tarikh).toLocaleDateString('ms-MY').replace(/\//g, '.') : "[TARIKH]";
+        let tmptPapar = currentUser.tempatBertugas || currentUser.tempat || "LOKASI";
+        let jawatanPapar = currentUser.jawatanSingkatan || currentUser.jawatan || "JAWATAN";
+        let namaPapar = currentUser.namaPenuh || currentUser.nama || "NAMA";
+
+        let pStr = pasukanSenarai.map(p => `${p.jawatan.toUpperCase()} ${p.nama.toUpperCase()}` + (p.tugasan !== "-" ? ` (${p.tugasan})` : "")).join(', ');
+        let gabung = pStr ? `DI ANGGOTAI OLEH ${pStr} DAN SAYA SENDIRI ${jawatanPapar.toUpperCase()} ${namaPapar.toUpperCase()} (RO)` : `SAYA SENDIRI ${jawatanPapar.toUpperCase()} ${namaPapar.toUpperCase()} (RO)`;
+
+        let teks = "";
+
+        if(currentMode === 'cots') {
+            teks = `PADA ${tStr} @ ${dt.masa} HRS, SEPASUKAN PEGAWAI PENGUATKUASA DARI ${tmptPapar.toUpperCase()} ${gabung} TELAH MELAKUKAN PEMERIKSAAN DI PREMIS TETAP BERALAMAT DI ${dt.pNama}, ${dt.pAlamat} DAN DALAM MENJALANKAN KUASA-KUASA YANG DIBERIKAN KEPADA SAYA DI BAWAH ${dt.akta} TELAH MENDAPATI SUATU KESALAHAN TELAH DILAKUKAN DI BAWAH ${dt.sek} IAITU ${dt.jenis}.
+
+TINDAKAN KOMPAUN SERTA MERTA (COTS) TELAH DIAMBIL KE ATAS ORANG YANG BERTANGGUNGJAWAB PADA MASA ITU IAITU ${dt.oNama} BERNOMBOR KAD PENGENALAN ${dt.oIc} YANG MENGAKU SEBAGAI ${dt.oJaw} SEBANYAK RM ${dt.kNilai} MELALUI KAEDAH ${dt.kBayar}. SESALINAN KENYATAAN PEMERIKSAAN, TAWARAN KOMPAUN, AKUAN PENERIMAAN KOMPAUN DAN RESIT KEWANGAN BERNOMBOR ${dt.kResit} TELAH DIKELUARKAN BERHUBUNG DENGAN KESALAHAN TERSEBUT DAN TELAH DITANDATANGANI.
+
+SIASATAN DAN TINDAKAN SELANJUTNYA SEDANG DIJALANKAN OLEH BAHAGIAN PENGUATKUASA, ${tmptPapar.toUpperCase()}.`;
+
+        } else {
+            let sStr = sitaanSenarai.map((s, i) => `${i+1}. ${s.jenis.toUpperCase()} - ${s.kuantiti} UNIT - RM ${s.nilai || '0.00'}`).join('\n');
+            let ssmTeks = dt.pSsm ? `(SSM: ${dt.pSsm}) ` : "";
+
+            teks = `PADA ${tStr} KIRA-KIRA JAM ${dt.masa} HRS SEPASUKAN PEGAWAI PENGUATKUASA DARI ${tmptPapar.toUpperCase()} ${gabung}. SATU PEMERIKSAAN BERASASKAN ADUAN BERNOMBOR ${dt.ksFull} TELAH DIJALANKAN DI SEBUAH PREMIS YANG BERALAMAT ${dt.pNama} ${ssmTeks}, ${dt.pAlamat}. SEMASA PEMERIKSAAN KAMI TELAH BERTEMU DENGAN SEORANG INDIVIDU YANG DIKENALI SEBAGAI ${dt.oNama} (NO. KP: ${dt.oIc}) MENGAKU SEBAGAI ${dt.oJaw} SYARIKAT TERSEBUT.
+
+HASIL DARIPADA PEMERIKSAAN YANG DIJALANKAN MENDAPATI ${dt.jenis}. DISYAKI KESALAHAN DIBAWAH ${dt.akta}.
+
+SATU TINDAKAN KES TELAH DI AMBIL BERHUBUNG KESALAHAN DI BAWAH ${dt.akta}. SITAAN TELAH DIBUAT SEPERTI PERKARA BERIKUT:
+
+${sStr}
+
+SESALINAN KENYATAAN PEMERIKSAAN DAN AKUAN PENYITAAN YANG TELAH SIAP DITANDATANGANI TELAH DIBERIKAN KEPADA ${dt.oJaw} TERSEBUT. TINDAKAN SELANJUTNYA KE ATAS BARANG SITAAN SERTA SIASATAN LANJUT KES AKAN DIJALANKAN OLEH ${tmptPapar.toUpperCase()}. SEKIAN, LAPORAN SAYA.`;
+        }
+        return teks.toUpperCase();
+    }
+
+    function editSemula() {
+        window.scrollTo({top: 0, behavior: 'smooth'});
+        showToast("Mod Edit Diaktifkan. Sila buat pembetulan pada borang.");
+    }
+
+    // --- STREAMING_CHUNK: Penyediaan Fungsi Sejarah dan Balai ---
+    async function muatSejarah() {
+        if(!currentUser) return;
+        setLoader(true, "Memuat turun Sejarah Laporan...");
+        
+        try {
+                const snap = await rtdb.ref('laporan').orderByChild('icPegawai').equalTo(currentUser.ic).once('value');
+                const sejarah = [];
+                snap.forEach(child => {
+                    const v = child.val();
+                    sejarah.push({ kod: child.key, tarikhMs: v.tarikhDijana || 0,
+                        tarikh: v.tarikhDijana ? new Date(v.tarikhDijana).toLocaleString('ms-MY') : '-',
+                        mode: v.mode || 'LAPORAN', premis: (v.dataForm && v.dataForm.pNama) || 'TIDAK DIKETAHUI' });
+                });
+                sejarah.sort((a,b) => b.tarikhMs - a.tarikhMs);
+                let tbody = document.getElementById('jadualSejarahBody');
+                tbody.innerHTML = '';
+                if(sejarah.length > 0) {
+                    sejarah.forEach(item => {
+                        let tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td class="px-4 py-4 text-slate-800 font-bold uppercase text-[10px] sm:text-xs">${item.tarikh}</td>
+                            <td class="px-4 py-4 text-blue-700 font-black uppercase text-[10px] sm:text-xs">${item.mode}</td>
+                            <td class="px-4 py-4 text-slate-600 font-bold uppercase text-[10px] sm:text-xs">${item.premis}</td>
+                            <td class="px-4 py-4 text-center font-black tracking-widest text-emerald-700 text-sm sm:text-base bg-emerald-50">${item.kod}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                    showToast("Rekod Sejarah Dikemas Kini!");
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-8 text-center text-[10px] sm:text-xs text-slate-400 italic font-bold">TIADA REKOD LAPORAN DIJUMPAI.</td></tr>';
+                }
+        } catch(err) {
+                console.error(err);
+                showModal("Ralat Rangkaian", "Gagal memuat turun sejarah.");
+        } finally { setLoader(false); }
+    }
+
+    async function cariLaporanBalai() {
+        let kod = document.getElementById('carianKodBalai').value.trim();
+        if(!kod) return showModal("Ralat", "Sila masukkan kod 5 angka terlebih dahulu.");
+        
+        setLoader(true, "Mencari Laporan...");
+        
+        try {
+                const snap = await rtdb.ref('laporan/' + kod).once('value');
+                let paparan = document.getElementById('paparanLaporanBalai');
+                if(snap.exists()) {
+                    document.getElementById('teksLaporanBalai').innerText = snap.val().teksLaporan;
+                    paparan.classList.remove('hidden');
+                    showToast("Laporan Dijumpai!");
+                } else {
+                    paparan.classList.add('hidden');
+                    showModal("Tiada Rekod", "Laporan tidak wujud untuk kod ini.");
+                }
+        } catch(err) {
+                console.error(err);
+                showModal("Ralat Rangkaian", "Gagal berhubung dengan Firebase Realtime Database.");
+        } finally { setLoader(false); }
+    }
+
+    function salinLaporanBalai() {
+        let text = document.getElementById('teksLaporanBalai').innerText;
+        let dummy = document.createElement("textarea");
+        document.body.appendChild(dummy);
+        dummy.value = text;
+        dummy.select();
+        document.execCommand("copy");
+        document.body.removeChild(dummy);
+        
+        showModal("Berjaya Disalin", "Laporan telah disalin ke papan keratan (clipboard)!\n\nSistem akan dimuat semula untuk keselamatan.");
+        setTimeout(() => { location.reload(); }, 4000);
+    }
+
+    function hantarLaporanKeEmel() {
+        if (!currentUser || !editModeKod) return showModal("Laporan Belum Disimpan", "Sila jana dan simpan laporan terlebih dahulu.");
+        showConfirm("Hantar Laporan", "Hantar laporan ini ke e-mel berdaftar anda?", async function() {
+            setLoader(true, "Menghantar laporan ke e-mel...");
+            try {
+                const sendReportEmail = functions.httpsCallable('sendReportEmail');
+                const result = await sendReportEmail({ kod: editModeKod, ic: currentUser.ic });
+                showModal("E-mel Berjaya Dihantar", result.data.message || "Laporan telah dihantar.");
+            } catch (err) {
+                console.error(err);
+                showModal("Penghantaran Gagal", err.message || "Laporan tidak dapat dihantar.");
+            } finally { setLoader(false); }
+        });
+    }
+
+    function resetBalai() {
+        document.getElementById('carianKodBalai').value = '';
+        document.getElementById('paparanLaporanBalai').classList.add('hidden');
+        document.getElementById('teksLaporanBalai').innerText = '';
+    }
+
+    // --- STREAMING_CHUNK: Panel Modul Super Admin ---
+    function muatNaikCSV(kategori) {
+        let fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = '.csv';
+        fileInput.onchange = function(e) {
+            let file = e.target.files[0];
+            if (!file) return;
+            let reader = new FileReader();
+            reader.onload = function(e) {
+                let text = e.target.result;
+                let lines = text.split('\n');
+                let parsedArray = [];
+
+                for (let i = 1; i < lines.length; i++) {
+                    let line = lines[i].trim();
+                    if (!line) continue;
+                    let cols = line.split(',');
+
+                    if (kategori === 'pegawai' && cols.length >= 5) {
+                        parsedArray.push([cols[0].trim(), cols[1].trim().toUpperCase(), cols[2].trim().toUpperCase(), cols[3].trim().toUpperCase(), cols[4].trim().toUpperCase(), (cols[5] || '').trim().toLowerCase(), (cols[6] || 'PENGGUNA').trim().toUpperCase(), (cols[7] || 'AKTIF').trim().toUpperCase()]);
+                    } 
+                    else if (kategori === 'kesalahan' && cols.length >= 3) {
+                        parsedArray.push([cols[0].trim().toUpperCase(), cols[1].trim().toUpperCase(), cols[2].trim().toUpperCase()]);
+                    }
+                    else if (cols[0]) {
+                        parsedArray.push(cols[0].trim().toUpperCase());
+                    }
+                }
+                
+                hantarDataAdminKePelayan(kategori, parsedArray);
+            };
+            reader.readAsText(file);
+        };
+        fileInput.click();
+    }
+
+    async function hantarDataAdminKePelayan(kategori, dataArray) {
+        setLoader(true, "Mengemas kini Pangkalan Data...");
+        try {
+            if (!currentUser || !currentUser.isAdmin) throw new Error("Akses pentadbir diperlukan.");
+            let path, value;
+            if (kategori === 'pegawai') {
+                path = 'pegawai'; value = {};
+                dataArray.forEach(r => { value[String(r[0])] = { namaPenuh:r[1], jawatanSingkatan:r[2], namaJawatanPenuh:r[3], tempatBertugas:r[4], emel:r[5], peranan:r[6], status:r[7], isAdmin:r[6] === 'ADMIN' || r[6] === 'SUPER ADMIN' }; });
+            } else if (kategori === 'kesalahan') {
+                path = 'kesalahan'; value = dataArray.map(r => ({ akta:r[0], seksyen:r[1], jenis:r[2] }));
+            } else {
+                path = 'tetapan/' + kategori; value = dataArray;
+            }
+            await rtdb.ref(path).set(value);
+            showToast("Berjaya dikemas kini!");
+            await initApp();
+        } catch(err) {
+                console.error(err);
+                showModal("Ralat", err.message || "Gagal mengemas kini Firebase.");
+        } finally { setLoader(false); }
+    }
+
+    function muatTurunCSV(kategori) {
+        let csvContent = "data:text/csv;charset=utf-8,";
+        if (kategori === 'pegawai') csvContent += "NoKadPengenalan,NamaPenuh,JawatanSingkatan,NamaJawatanPenuh,TempatBertugas,Emel,Peranan,Status\n";
+        else if (kategori === 'tugasan') csvContent += "Nama Tugasan\n";
+        else if (kategori === 'ksAkta') csvContent += "Kod Kertas Siasatan\n";
+        else if (kategori === 'kodKawasan') csvContent += "Kod Kawasan\n";
+        else if (kategori === 'kesalahan') csvContent += "Akta Utama,Seksyen,Jenis Kesalahan\n";
+        
+        let encodedUri = encodeURI(csvContent);
+        let link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "Template_" + kategori + ".csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function renderAdminData() {
+        let container = document.getElementById('adminCardsContainer');
+        container.innerHTML = '';
+        
+        let sections = [
+            { id: 'pegawai', tajuk: '1. Pangkalan Data Pegawai', data: DB.pegawai.map(p => `${p.namaPenuh || p.nama} (${p.ic}) - ${p.jawatanSingkatan || p.jawatan}`) },
+            { id: 'tugasan', tajuk: '2. Senarai Tugasan Pasukan', data: DB.tugasan },
+            { id: 'ksAkta', tajuk: '3. Kod Akta (Kertas Siasatan)', data: DB.ksAkta },
+            { id: 'kodKawasan', tajuk: '4. Kod Kawasan Cawangan', data: DB.kodKawasan },
+            { id: 'kesalahan', tajuk: '5. Pokok Kesalahan', data: DB.kesalahan.map(k => `${k.akta} > ${k.seksyen} > ${k.jenis}`) }
+        ];
+
+        sections.forEach(sec => {
+            let listHTML = sec.data.map((item) => `
+                <li class="bg-slate-50 border border-slate-100 p-3 sm:p-4 rounded-xl text-[10px] sm:text-xs text-slate-700 uppercase font-black shadow-sm mb-2">
+                    <span>${item}</span>
+                </li>
+            `).join('');
+
+            let html = `
+                <div class="bg-white p-4 sm:p-8 rounded-none sm:rounded-3xl shadow-sm border-y sm:border border-slate-200">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 sm:border-b-2 border-slate-50 pb-4 space-y-4 sm:space-y-0">
+                        <h3 class="font-black text-slate-800 uppercase tracking-tight text-sm sm:text-lg">${sec.tajuk}</h3>
+                        <div class="flex space-x-2 w-full sm:w-auto">
+                            <button onclick="muatTurunCSV('${sec.id}')" class="flex-1 sm:flex-none text-[10px] sm:text-xs bg-slate-200 text-slate-700 px-4 py-3 sm:px-5 sm:py-2.5 rounded-xl font-black transition hover:bg-slate-300 uppercase tracking-widest">↓ Template</button>
+                            <button onclick="muatNaikCSV('${sec.id}')" class="flex-1 sm:flex-none text-[10px] sm:text-xs bg-emerald-600 text-white px-4 py-3 sm:px-5 sm:py-2.5 rounded-xl font-black transition shadow-md hover:bg-emerald-700 uppercase tracking-widest">↑ Sync CSV</button>
+                        </div>
+                    </div>
+                    <ul class="max-h-64 overflow-y-auto pr-2 styled-scrollbar">${listHTML || '<li class="text-[10px] sm:text-xs text-slate-400 italic font-bold p-6 text-center bg-slate-50 rounded-xl">Tiada rekod dijumpai. Sila upload excel.</li>'}</ul>
+                </div>
+            `;
+            container.innerHTML += html;
+        });
+    }
+
+    // --- STREAMING_CHUNK: Utiliti Pengurusan Tab Navigasi ---
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.nav-btn').forEach(el => {
+            if(el.id !== 'nav-admin') {
+                el.classList.remove('bg-blue-600'); 
+                el.classList.add('bg-slate-700');
+            }
+        });
+        document.getElementById(tabId).classList.add('active');
+        if(tabId !== 'admin' && document.getElementById('nav-' + tabId)) {
+            document.getElementById('nav-' + tabId).classList.add('bg-blue-600');
+            document.getElementById('nav-' + tabId).classList.remove('bg-slate-700');
+        }
+
+        // Muat data jika tab sejarah ditekan
+        if(tabId === 'sejarah' && currentUser) {
+            muatSejarah();
+        }
+    }
+
+    // MULAKAN SISTEM
+    window.onload = initApp;
+</script>
+</body>
+</html>

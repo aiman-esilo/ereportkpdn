@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "sistem-e-report-kpdn"
+  },
+  "targets": {
+    "sistem-e-report-kpdn": {
+      "hosting": {
+        "ereport": [
+          "ereportkpdn"
+        ]
+      }
+    }
+  }
+}
