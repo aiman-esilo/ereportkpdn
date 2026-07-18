@@ -1,8 +1,22 @@
 {
   "rules": {
-    ".read": "auth != null",
-    ".write": "auth != null",
+    ".read": false,
+    ".write": false,
+    "pegawai": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'aiman@kpdn.gov.my'"
+    },
+    "tetapan": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'aiman@kpdn.gov.my'"
+    },
+    "kesalahan": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'aiman@kpdn.gov.my'"
+    },
     "laporan": {
+      ".read": "auth != null",
+      ".write": "auth != null",
       ".indexOn": [
         "icPegawai"
       ]
