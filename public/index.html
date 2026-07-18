@@ -99,13 +99,41 @@
             <h2 class="text-xl sm:text-2xl font-black text-slate-800 uppercase tracking-widest text-center mb-8 bg-slate-100 py-2 rounded-lg border border-slate-200">SISTEM E-REPORT KPDN</h2>
             
             <div class="space-y-5">
-                <div>
-                    <label class="block text-xs font-extrabold text-slate-700 mb-2 uppercase">No Kad Pengenalan (Tanpa '-')</label>
-                    <input type="text" inputmode="numeric" maxlength="12" id="loginIc" oninput="this.value=this.value.replace(/\D/g,'').slice(0,12)" class="w-full px-4 py-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-blue-600 outline-none disabled:bg-slate-100 font-black tracking-[0.2em] text-center text-lg transition-colors" placeholder="CTH: 850101145566">
+                <div class="grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1.5" role="tablist" aria-label="Pilihan log masuk">
+                    <button type="button" id="btnModPegawai" onclick="pilihModLogin('pegawai')" class="rounded-lg bg-blue-700 px-3 py-3 text-[10px] sm:text-xs font-black uppercase tracking-wider text-white shadow transition-colors" aria-selected="true">
+                        Pegawai
+                    </button>
+                    <button type="button" id="btnModAdmin" onclick="pilihModLogin('pentadbir')" class="rounded-lg px-3 py-3 text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-600 transition-colors hover:bg-white" aria-selected="false">
+                        Pentadbir
+                    </button>
                 </div>
-                <button id="btnLogin" onclick="handleLogin()" class="w-full bg-blue-700 hover:bg-blue-800 active:bg-blue-900 text-white font-bold py-4 px-4 rounded-xl shadow-lg transition-all text-sm uppercase tracking-widest">
-                    Log Masuk
-                </button>
+
+                <div id="panelLoginPegawai" class="space-y-5">
+                    <div>
+                        <label class="block text-xs font-extrabold text-slate-700 mb-2 uppercase">No Kad Pengenalan (Tanpa '-')</label>
+                        <input type="text" inputmode="numeric" maxlength="12" id="loginIc" oninput="this.value=this.value.replace(/\D/g,'').slice(0,12)" onkeydown="if(event.key==='Enter') handleLogin()" autocomplete="username" class="w-full px-4 py-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-blue-600 outline-none disabled:bg-slate-100 font-black tracking-[0.2em] text-center text-lg transition-colors" placeholder="CTH: 850101145566">
+                    </div>
+                    <button id="btnLogin" onclick="handleLogin()" class="w-full bg-blue-700 hover:bg-blue-800 active:bg-blue-900 text-white font-bold py-4 px-4 rounded-xl shadow-lg transition-all text-sm uppercase tracking-widest">
+                        Log Masuk Pegawai
+                    </button>
+                </div>
+
+                <div id="panelLoginPentadbir" class="hidden space-y-4">
+                    <div>
+                        <label class="block text-xs font-extrabold text-slate-700 mb-2 uppercase">ID Pentadbir</label>
+                        <input type="text" maxlength="30" id="adminLoginId" oninput="this.value=this.value.toUpperCase().replace(/\s/g,'')" autocomplete="username" class="w-full px-4 py-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-yellow-500 outline-none font-black tracking-[0.15em] text-center text-base transition-colors" placeholder="ID PENTADBIR">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-extrabold text-slate-700 mb-2 uppercase">Kata Laluan</label>
+                        <div class="relative">
+                            <input type="password" id="adminPassword" onkeydown="if(event.key==='Enter') handleAdminLogin()" autocomplete="current-password" class="w-full px-4 py-3.5 pr-16 bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-yellow-500 outline-none font-bold text-center transition-colors" placeholder="KATA LALUAN">
+                            <button type="button" onclick="toggleAdminPassword()" id="btnToggleAdminPassword" class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black uppercase text-slate-500 hover:text-slate-800">Lihat</button>
+                        </div>
+                    </div>
+                    <button id="btnAdminLogin" onclick="handleAdminLogin()" class="w-full bg-slate-800 hover:bg-slate-900 active:bg-black text-yellow-400 font-bold py-4 px-4 rounded-xl shadow-lg transition-all text-sm uppercase tracking-widest">
+                        Log Masuk Pentadbir
+                    </button>
+                </div>
                 
                 <div class="mt-6 pt-6 border-t-2 border-slate-100">
                     <button id="btnBalaiAkses" onclick="bukaModBalaiAwam()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-4 px-4 rounded-xl shadow-lg transition-colors text-xs uppercase flex items-center justify-center space-x-2 tracking-widest">
@@ -470,7 +498,7 @@
     const firebaseConfig = {
       apiKey: "AIzaSyBvEYqjWTiMXOOdEE9PwpjL5BcDfEbngmk",
       authDomain: "sistem-e-report-kpdn.firebaseapp.com",
-      databaseURL: "https://sistem-e-report-kpdn-default-rtdb.asia-southeast1.firebasedatabase.app/",
+      databaseURL: "PASTE_URL_REALTIME_DATABASE_DI_SINI",
       projectId: "sistem-e-report-kpdn",
       storageBucket: "sistem-e-report-kpdn.firebasestorage.app",
       messagingSenderId: "501283137894",
@@ -481,6 +509,16 @@
     const rtdb = firebase.database();
     const auth = firebase.auth();
     const functions = firebase.app().functions("asia-southeast1");
+
+    // Akaun pentadbir diasingkan daripada rekod IC pegawai.
+    // Kata laluan TIDAK disimpan di dalam fail ini; ia diurus oleh Firebase Authentication.
+    const ADMIN_LOGIN = Object.freeze({
+        id: "SUPERADMIN",
+        email: "aiman@kpdn.gov.my",
+        nama: "SUPER ADMIN KPDN",
+        jawatan: "PENTADBIR SISTEM",
+        tempat: "KPDN"
+    });
 
     let DB = { users: {}, pegawai: [], tugasan: [], ksAkta: [], kodKawasan: [], kesalahan: [] };
     
@@ -562,12 +600,17 @@
         return Array.isArray(value) ? value.filter(v => v !== null) : Object.values(value);
     }
 
-    async function initApp() {
+    async function initApp(kekalkanSesiPentadbir = false) {
         document.getElementById('btnLogin').disabled = true;
+        document.getElementById('btnAdminLogin').disabled = true;
         document.getElementById('loginStatus').classList.remove('hidden');
         try {
             if (!firebaseConfig.databaseURL.startsWith("https://")) {
                 throw new Error("Sila masukkan databaseURL Realtime Database dalam firebaseConfig.");
+            }
+            await auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+            if (!kekalkanSesiPentadbir && auth.currentUser && !auth.currentUser.isAnonymous) {
+                await auth.signOut();
             }
             if (!auth.currentUser) await auth.signInAnonymously();
             const [pegawaiSnap, tetapanSnap, kesalahanSnap] = await Promise.all([
@@ -587,6 +630,7 @@
             showModal("Ralat Firebase", err.message || "Gagal memuat turun data Realtime Database.");
         } finally {
             document.getElementById('btnLogin').disabled = false;
+            document.getElementById('btnAdminLogin').disabled = false;
             document.getElementById('loginStatus').classList.add('hidden');
         }
     }
@@ -602,56 +646,166 @@
     }
 
     // --- STREAMING_CHUNK: Logik Daftar Masuk dan Keluar ---
-    function handleLogin() {
-        let ic = document.getElementById('loginIc').value.trim().toUpperCase();
-        if(!/^\d{12}$/.test(ic)) return showModal("Ralat", "Sila masukkan 12 digit No Kad Pengenalan.");
-        
-        if(DB.users[ic]) {
-            currentUser = DB.users[ic];
-            currentUser.ic = ic;
-            
-            let currNama = currentUser.namaPenuh || currentUser.nama || "PEGAWAI";
-            let currJaw = currentUser.namaJawatanPenuh || currentUser.jawatanSingkatan || currentUser.jawatan || "JAWATAN";
-            let currTempat = currentUser.tempatBertugas || currentUser.tempat || "LOKASI";
+    function pilihModLogin(mod) {
+        const pentadbir = mod === 'pentadbir';
+        const panelPegawai = document.getElementById('panelLoginPegawai');
+        const panelPentadbir = document.getElementById('panelLoginPentadbir');
+        const btnPegawai = document.getElementById('btnModPegawai');
+        const btnPentadbir = document.getElementById('btnModAdmin');
 
-            document.getElementById('userNameDisplay').innerText = "Log masuk: " + currNama;
-            document.getElementById('pemohonNama').value = currNama;
-            document.getElementById('pemohonIc').value = ic;
-            document.getElementById('pemohonJawatan').value = currJaw;
-            document.getElementById('pemohonTempat').value = currTempat;
+        panelPegawai.classList.toggle('hidden', pentadbir);
+        panelPentadbir.classList.toggle('hidden', !pentadbir);
+        btnPegawai.className = pentadbir
+            ? 'rounded-lg px-3 py-3 text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-600 transition-colors hover:bg-white'
+            : 'rounded-lg bg-blue-700 px-3 py-3 text-[10px] sm:text-xs font-black uppercase tracking-wider text-white shadow transition-colors';
+        btnPentadbir.className = pentadbir
+            ? 'rounded-lg bg-slate-800 px-3 py-3 text-[10px] sm:text-xs font-black uppercase tracking-wider text-yellow-400 shadow transition-colors'
+            : 'rounded-lg px-3 py-3 text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-600 transition-colors hover:bg-white';
+        btnPegawai.setAttribute('aria-selected', String(!pentadbir));
+        btnPentadbir.setAttribute('aria-selected', String(pentadbir));
 
-            if(currentUser.isAdmin) document.getElementById('nav-admin').classList.remove('hidden');
-            else document.getElementById('nav-admin').classList.add('hidden');
+        setTimeout(() => {
+            document.getElementById(pentadbir ? 'adminLoginId' : 'loginIc').focus();
+        }, 0);
+    }
 
-            document.getElementById('loginOverlay').classList.add('hidden');
-            document.getElementById('mainHeader').classList.remove('hidden');
-            document.getElementById('appContainer').classList.remove('hidden');
-            
-            laksanaTukarMod('cots'); // Ini mereset borang
-            switchTab('dashboard');
-            showToast("Log Masuk Berjaya!");
-            window.scrollTo(0,0);
-        } else {
-            showModal("Ralat Akses", "No Kad Pengenalan tiada dalam pangkalan data. Sila semak dengan Admin.");
+    function toggleAdminPassword() {
+        const input = document.getElementById('adminPassword');
+        const button = document.getElementById('btnToggleAdminPassword');
+        const sedangTersembunyi = input.type === 'password';
+        input.type = sedangTersembunyi ? 'text' : 'password';
+        button.innerText = sedangTersembunyi ? 'Sembunyi' : 'Lihat';
+    }
+
+    async function pastikanSesiAnonim() {
+        if (auth.currentUser && !auth.currentUser.isAnonymous) {
+            await auth.signOut();
+        }
+        if (!auth.currentUser) {
+            await auth.signInAnonymously();
         }
     }
 
-    function logout() {
+    function bukaAplikasi(pengguna, tabPermulaan) {
+        const currNama = pengguna.namaPenuh || pengguna.nama || "PEGAWAI";
+        const currJaw = pengguna.namaJawatanPenuh || pengguna.jawatanSingkatan || pengguna.jawatan || "JAWATAN";
+        const currTempat = pengguna.tempatBertugas || pengguna.tempat || "LOKASI";
+
+        document.getElementById('userNameDisplay').innerText = "Log masuk: " + currNama;
+        document.getElementById('pemohonNama').value = currNama;
+        document.getElementById('pemohonIc').value = pengguna.ic || pengguna.id || '';
+        document.getElementById('pemohonJawatan').value = currJaw;
+        document.getElementById('pemohonTempat').value = currTempat;
+        document.getElementById('nav-admin').classList.toggle('hidden', !pengguna.isAdmin);
+
+        document.getElementById('loginOverlay').classList.add('hidden');
+        document.getElementById('mainHeader').classList.remove('hidden');
+        document.getElementById('appContainer').classList.remove('hidden');
+
+        laksanaTukarMod('cots');
+        switchTab(tabPermulaan || 'dashboard');
+        showToast("Log Masuk Berjaya!");
+        window.scrollTo(0,0);
+    }
+
+    async function handleLogin() {
+        const ic = document.getElementById('loginIc').value.trim();
+        if (!/^\d{12}$/.test(ic)) {
+            return showModal("Ralat", "Sila masukkan 12 digit No Kad Pengenalan.");
+        }
+        if (!DB.users[ic]) {
+            return showModal("Ralat Akses", "No Kad Pengenalan tiada dalam pangkalan data. Sila semak dengan Admin.");
+        }
+
+        setLoader(true, "Mengesahkan akses pegawai...");
+        try {
+            // Pastikan login pegawai tidak mewarisi sesi Firebase pentadbir.
+            await pastikanSesiAnonim();
+            currentUser = { ...DB.users[ic], ic, isAdmin: false };
+            bukaAplikasi(currentUser, 'dashboard');
+        } catch (err) {
+            console.error(err);
+            showModal("Ralat Log Masuk", "Sambungan pengesahan gagal. Sila cuba semula.");
+        } finally {
+            setLoader(false);
+        }
+    }
+
+    async function handleAdminLogin() {
+        const id = document.getElementById('adminLoginId').value.trim().toUpperCase();
+        const password = document.getElementById('adminPassword').value;
+
+        if (id !== ADMIN_LOGIN.id || !password) {
+            return showModal("Ralat Akses", "ID pentadbir atau kata laluan tidak sah.");
+        }
+
+        setLoader(true, "Mengesahkan akses pentadbir...");
+        try {
+            if (auth.currentUser) await auth.signOut();
+            const credential = await auth.signInWithEmailAndPassword(ADMIN_LOGIN.email, password);
+            const emailSah = (credential.user.email || '').toLowerCase() === ADMIN_LOGIN.email.toLowerCase();
+            if (!emailSah) throw new Error("Akaun pentadbir tidak sepadan.");
+
+            currentUser = {
+                id: ADMIN_LOGIN.id,
+                ic: ADMIN_LOGIN.id,
+                uid: credential.user.uid,
+                emel: ADMIN_LOGIN.email,
+                namaPenuh: ADMIN_LOGIN.nama,
+                namaJawatanPenuh: ADMIN_LOGIN.jawatan,
+                tempatBertugas: ADMIN_LOGIN.tempat,
+                peranan: "SUPER ADMIN",
+                isAdmin: true
+            };
+            document.getElementById('adminPassword').value = '';
+            bukaAplikasi(currentUser, 'admin');
+        } catch (err) {
+            console.error("Admin login error:", err);
+            try { await pastikanSesiAnonim(); } catch (_) {}
+            showModal("Ralat Akses", "ID pentadbir atau kata laluan tidak sah.");
+        } finally {
+            setLoader(false);
+        }
+    }
+
+    async function logout() {
         currentUser = null;
         document.getElementById('loginIc').value = '';
+        document.getElementById('adminLoginId').value = '';
+        document.getElementById('adminPassword').value = '';
+        document.getElementById('adminPassword').type = 'password';
+        document.getElementById('btnToggleAdminPassword').innerText = 'Lihat';
+        document.getElementById('nav-admin').classList.add('hidden');
         document.getElementById('mainHeader').classList.add('hidden');
         document.getElementById('appContainer').classList.add('hidden');
         document.getElementById('loginOverlay').classList.remove('hidden');
-        laksanaTukarMod('cots'); // Reset
+        pilihModLogin('pegawai');
+        laksanaTukarMod('cots');
+
+        try {
+            await pastikanSesiAnonim();
+        } catch (err) {
+            console.error("Logout error:", err);
+        }
     }
 
-    function bukaModBalaiAwam() {
-        document.getElementById('loginOverlay').classList.add('hidden');
-        document.getElementById('appContainer').classList.remove('hidden');
-        document.getElementById('mainHeader').classList.add('hidden');
-        resetBalai();
-        switchTab('balai');
-        window.scrollTo(0,0);
+    async function bukaModBalaiAwam() {
+        setLoader(true, "Membuka akses balai...");
+        try {
+            await pastikanSesiAnonim();
+            currentUser = null;
+            document.getElementById('loginOverlay').classList.add('hidden');
+            document.getElementById('appContainer').classList.remove('hidden');
+            document.getElementById('mainHeader').classList.add('hidden');
+            resetBalai();
+            switchTab('balai');
+            window.scrollTo(0,0);
+        } catch (err) {
+            console.error(err);
+            showModal("Ralat", "Akses balai tidak dapat dibuka. Sila cuba semula.");
+        } finally {
+            setLoader(false);
+        }
     }
 
     // --- STREAMING_CHUNK: Pengurusan Mod Borang Utama ---
@@ -1178,11 +1332,13 @@ SESALINAN KENYATAAN PEMERIKSAAN DAN AKUAN PENYITAAN YANG TELAH SIAP DITANDATANGA
     async function hantarDataAdminKePelayan(kategori, dataArray) {
         setLoader(true, "Mengemas kini Pangkalan Data...");
         try {
-            if (!currentUser || !currentUser.isAdmin) throw new Error("Akses pentadbir diperlukan.");
+            const emailAktif = (auth.currentUser && auth.currentUser.email || '').toLowerCase();
+            const adminDisahkan = currentUser && currentUser.isAdmin && emailAktif === ADMIN_LOGIN.email.toLowerCase();
+            if (!adminDisahkan) throw new Error("Sesi pentadbir tidak sah. Sila log masuk semula.");
             let path, value;
             if (kategori === 'pegawai') {
                 path = 'pegawai'; value = {};
-                dataArray.forEach(r => { value[String(r[0])] = { namaPenuh:r[1], jawatanSingkatan:r[2], namaJawatanPenuh:r[3], tempatBertugas:r[4], emel:r[5], peranan:r[6], status:r[7], isAdmin:r[6] === 'ADMIN' || r[6] === 'SUPER ADMIN' }; });
+                dataArray.forEach(r => { value[String(r[0])] = { namaPenuh:r[1], jawatanSingkatan:r[2], namaJawatanPenuh:r[3], tempatBertugas:r[4], emel:r[5], peranan:r[6], status:r[7], isAdmin:false }; });
             } else if (kategori === 'kesalahan') {
                 path = 'kesalahan'; value = dataArray.map(r => ({ akta:r[0], seksyen:r[1], jenis:r[2] }));
             } else {
@@ -1190,7 +1346,7 @@ SESALINAN KENYATAAN PEMERIKSAAN DAN AKUAN PENYITAAN YANG TELAH SIAP DITANDATANGA
             }
             await rtdb.ref(path).set(value);
             showToast("Berjaya dikemas kini!");
-            await initApp();
+            await initApp(true);
         } catch(err) {
                 console.error(err);
                 showModal("Ralat", err.message || "Gagal mengemas kini Firebase.");
