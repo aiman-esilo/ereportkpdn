@@ -4,15 +4,15 @@
     ".write": false,
     "pegawai": {
       ".read": "auth != null",
-      ".write": "auth != null && auth.token.email === 'aiman@kpdn.gov.my'"
+      ".write": "auth != null && auth.uid === 'oPP3vwxE2sWKYg7Rt4e7pLz7pkH2'"
     },
     "tetapan": {
       ".read": "auth != null",
-      ".write": "auth != null && auth.token.email === 'aiman@kpdn.gov.my'"
+      ".write": "auth != null && auth.uid === 'oPP3vwxE2sWKYg7Rt4e7pLz7pkH2'"
     },
     "kesalahan": {
       ".read": "auth != null",
-      ".write": "auth != null && auth.token.email === 'aiman@kpdn.gov.my'"
+      ".write": "auth != null && auth.uid === 'oPP3vwxE2sWKYg7Rt4e7pLz7pkH2'"
     },
     "laporan": {
       ".read": "auth != null",
