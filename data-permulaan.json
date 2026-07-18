@@ -1,0 +1,22 @@
+{
+  "pegawai": {
+    "GANTI_DENGAN_IC_12_DIGIT": {
+      "namaPenuh": "NAMA PEGAWAI",
+      "jawatanSingkatan": "PP",
+      "namaJawatanPenuh": "PEGAWAI PENGUAT KUASA",
+      "tempatBertugas": "KPDN PULAU PINANG",
+      "emel": "emel@kpdn.gov.my",
+      "peranan": "ADMIN",
+      "status": "AKTIF",
+      "isAdmin": true
+    }
+  },
+  "tetapan": {
+    "tugasan": ["KETUA PASUKAN", "PEGAWAI SERBUAN", "JURUGAMBAR"],
+    "ksAkta": ["AKHAP", "AKPD"],
+    "kodKawasan": ["PPG", "SPU", "SPT", "SPS"]
+  },
+  "kesalahan": [
+    { "akta": "CONTOH AKTA", "seksyen": "SEKSYEN 1", "jenis": "CONTOH JENIS KESALAHAN" }
+  ]
+}
